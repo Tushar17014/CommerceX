@@ -1,0 +1,50 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: commercex-postgres
+
+    restart: always
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    networks:
+      - commercex-network
+
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: commercex-redis
+
+    restart: always
+
+    ports:
+      - "6379:6379"
+
+    networks:
+      - commercex-network
+
+
+
+volumes:
+
+  postgres_data:
+    name: commercex-postgres-data
+
+
+
+networks:
+
+  commercex-network:
+    name: commercex-network
+    driver: bridge
