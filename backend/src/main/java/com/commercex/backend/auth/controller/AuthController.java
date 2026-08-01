@@ -8,9 +8,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.commercex.backend.auth.dto.request.LoginRequest;
+import com.commercex.backend.auth.dto.request.RefreshTokenRequest;
 import com.commercex.backend.auth.dto.request.RegisterRequest;
-import com.commercex.backend.auth.dto.response.LoginResponse;
 import com.commercex.backend.auth.dto.response.RegisterResponse;
+import com.commercex.backend.auth.dto.response.TokenResponse;
 import com.commercex.backend.auth.service.AuthService;
 import com.commercex.backend.common.response.ApiResponse;
 
@@ -37,17 +38,34 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(
+    public ResponseEntity<ApiResponse<TokenResponse>> login(
             @Valid @RequestBody LoginRequest request
     ) {
-        LoginResponse loginResponse = authService.login(request);
+        TokenResponse tokenResponse = authService.login(request);
 
-        ApiResponse<LoginResponse> response = new ApiResponse<>(
+        ApiResponse<TokenResponse> response = new ApiResponse<>(
                 true,
                 "Login successful",
-                loginResponse
+                tokenResponse
         );
 
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<TokenResponse>> refreshToken(
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        TokenResponse tokenResponse
+                = authService.refreshToken(request);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        true,
+                        "Tokens refreshed successfully",
+                        tokenResponse
+                )
+        );
+    }
+
 }
