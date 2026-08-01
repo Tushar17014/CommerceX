@@ -2,25 +2,27 @@ package com.commercex.backend.auth.service.impl;
 
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.commercex.backend.auth.dto.request.LoginRequest;
+import com.commercex.backend.auth.dto.request.RefreshTokenRequest;
 import com.commercex.backend.auth.dto.request.RegisterRequest;
 import com.commercex.backend.auth.dto.response.RegisterResponse;
+import com.commercex.backend.auth.dto.response.TokenResponse;
+import com.commercex.backend.auth.entity.RefreshToken;
 import com.commercex.backend.auth.entity.Role;
 import com.commercex.backend.auth.entity.Users;
 import com.commercex.backend.auth.repository.RoleRepository;
 import com.commercex.backend.auth.repository.UserRepository;
-import com.commercex.backend.auth.service.AuthService;
-import com.commercex.backend.common.exception.BusinessException;
-import com.commercex.backend.auth.dto.request.LoginRequest;
-import com.commercex.backend.auth.dto.response.LoginResponse;
 import com.commercex.backend.auth.security.JwtService;
+import com.commercex.backend.auth.service.AuthService;
+import com.commercex.backend.auth.service.RefreshTokenService;
+import com.commercex.backend.common.exception.BusinessException;
 
-import java.util.stream.Collectors;
-
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,6 +38,8 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
 
     private final JwtService jwtService;
+
+    private final RefreshTokenService refreshTokenService;
 
     @Override
     public RegisterResponse register(RegisterRequest request) {
@@ -74,8 +78,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public LoginResponse login(LoginRequest request) {
+    @Transactional
+    public TokenResponse login(LoginRequest request) {
 
         String normalizedEmail = request.email()
                 .trim()
@@ -116,6 +120,8 @@ public class AuthServiceImpl implements AuthService {
 
         String accessToken = jwtService.generateAccessToken(user);
 
+        String refreshToken = refreshTokenService.createRefreshToken(user);
+
         Set<String> roles = user.getRoles()
                 .stream()
                 .map(Role::getName)
@@ -126,14 +132,61 @@ public class AuthServiceImpl implements AuthService {
                 user.getId()
         );
 
-        return new LoginResponse(
+        return new TokenResponse(
                 accessToken,
+                refreshToken,
                 "Bearer",
                 jwtService.getAccessTokenExpirationMs(),
+                refreshTokenService.getRefreshTokenExpirationMs(),
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
                 roles
         );
     }
+
+    @Override
+    @Transactional
+    public TokenResponse refreshToken(
+            RefreshTokenRequest request
+    ) {
+        RefreshToken existingToken
+                = refreshTokenService.validateRefreshToken(
+                        request.refreshToken()
+                );
+
+        Users user = existingToken.getUser();
+
+        // Old refresh token can no longer be reused.
+        refreshTokenService.revokeToken(existingToken);
+
+        String newAccessToken
+                = jwtService.generateAccessToken(user);
+
+        String newRefreshToken
+                = refreshTokenService.createRefreshToken(user);
+
+        Set<String> roles = user.getRoles()
+                .stream()
+                .map(Role::getName)
+                .collect(Collectors.toSet());
+
+        log.info(
+                "Refresh token rotated successfully for user id: {}",
+                user.getId()
+        );
+
+        return new TokenResponse(
+                newAccessToken,
+                newRefreshToken,
+                "Bearer",
+                jwtService.getAccessTokenExpirationMs(),
+                refreshTokenService.getRefreshTokenExpirationMs(),
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                roles
+        );
+    }
+
 }
