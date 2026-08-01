@@ -66,6 +66,10 @@ public class RefreshToken {
     )
     private Users user;
 
+    public Users getUser() {
+        return this.user;
+    }
+
     @Column(
             name = "expires_at",
             nullable = false

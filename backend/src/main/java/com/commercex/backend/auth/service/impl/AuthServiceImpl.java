@@ -189,4 +189,18 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
+    public void logout(RefreshTokenRequest request) {
+        RefreshToken refreshToken
+                = refreshTokenService.validateRefreshToken(
+                        request.refreshToken()
+                );
+
+        refreshTokenService.revokeToken(refreshToken);
+
+        log.info(
+                "User logged out successfully. User id: {}",
+                refreshToken.getUser().getId()
+        );
+    }
+
 }
