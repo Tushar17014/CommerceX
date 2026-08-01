@@ -1,4 +1,4 @@
-package com.commercex.backend.auth.dto;
+package com.commercex.backend.auth.dto.response;
 
 import java.util.UUID;
 
